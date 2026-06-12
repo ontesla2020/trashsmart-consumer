@@ -40,7 +40,7 @@ export default function Login({ onComplete }) {
 
       <div className="field">
         <label>Mobile number <span className="req">*</span></label>
-        <input className="ti" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(510) 555-0123" />
+        <input className="ti" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Your mobile number" />
       </div>
 
       <div className="field" style={{ position: 'relative' }}>
