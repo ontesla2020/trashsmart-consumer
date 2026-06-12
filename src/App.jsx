@@ -104,6 +104,8 @@ export default function App() {
   function completeLogin(u) {
     try { localStorage.setItem('ts_user', JSON.stringify(u)); } catch (e) { /* ignore */ }
     api.saveProfile(u).catch(() => {});
+    // Fresh account starts at the welcome bonus with preset rings.
+    setGam(JSON.parse(JSON.stringify(INITIAL_GAM)));
     setUser(u);
     setScreen('home');
   }

@@ -1,8 +1,8 @@
 // Seeded gamification + rewards + challenges for the demo (client-side).
 
 export const INITIAL_GAM = {
-  points: 1240,
-  streak: 6,
+  points: 100, // welcome bonus for creating an account
+  streak: 1,
   rings: {
     recycle: { done: 2, goal: 4, label: 'Recycle', color: '#2477C9' },
     organics: { done: 1, goal: 3, label: 'Organics', color: '#3FA64A' },
