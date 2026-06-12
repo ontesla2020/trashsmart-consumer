@@ -14,7 +14,15 @@ const AC_CITIES = ['Livermore', 'Oakland', 'Dublin', 'Pleasanton', 'Fremont', 'H
   'Alameda', 'Albany', 'Emeryville', 'Piedmont', 'Newark', 'Union City', 'San Leandro', 'San Lorenzo', 'Castro Valley'];
 const seedCities = {};
 AC_CITIES.forEach((n) => { seedCities[slug(n)] = { name: n, county: 'Alameda', overrides: {}, exceptions: [] }; });
-seedCities.livermore.exceptions = ['Pizza boxes go in Organics even if greasy.'];
+// Livermore sorting rules, per StopWaste RE:Source / Livermore Recycles.
+seedCities.livermore.exceptions = [
+  'Recycle (blue cart): plastic bottles/jugs/tubs, glass bottles & jars, metal & aluminum cans, paper, flattened cardboard, and clean milk/juice/aseptic cartons.',
+  'Organics (green cart): all food scraps, food-soiled paper (napkins, paper towels, uncoated paper plates), pizza boxes even if greasy, and yard trimmings.',
+  'Garbage (gray cart): plastic bags & film, foam/Styrofoam, plastic-coated coffee cups & lids, plastic utensils & straws, and chip/snack bags.',
+  'Compostable or "BPI-certified" plastics (cups, utensils, bags) go in the Garbage cart — Livermore does not compost them.',
+  'Plastic bags and film are NOT recyclable curbside — return clean bags to a store drop-off, otherwise Garbage.',
+  'Batteries, electronics, and household hazardous waste never go in any curbside cart — take them to a drop-off site.'
+];
 
 const mem = {
   universal: { ...UNIVERSAL_DEFAULTS },

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Rings from '../components/Rings.jsx';
 import { POINTS_GUIDE } from '../data.js';
 
-export default function Home({ gam, firstName, onScan, onSetGoal, nextReward }) {
+export default function Home({ gam, firstName, onScan, onSetGoal, nextReward, cityName, cityRules = [] }) {
   const { rings } = gam;
   const order = ['recycle', 'organics', 'landfill'];
   const [goalKey, setGoalKey] = useState('recycle');
@@ -85,6 +85,20 @@ export default function Home({ gam, firstName, onScan, onSetGoal, nextReward }) 
         </div>
         <div className="tiny muted" style={{ marginTop: 6 }}>Bonus for correct sorting · contamination earns nothing.</div>
       </div>
+
+      {cityRules.length > 0 && (
+        <div className="card" style={{ marginTop: 12 }}>
+          <div className="row sp"><b className="small">{cityName} sorting rules</b><span className="tiny muted">via StopWaste</span></div>
+          <div style={{ marginTop: 6 }}>
+            {cityRules.map((r, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, padding: '7px 0', borderBottom: i < cityRules.length - 1 ? '1px solid var(--line)' : 'none' }}>
+                <span style={{ color: 'var(--green)' }}>•</span>
+                <span className="small muted">{r}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <button className="btn" style={{ marginTop: 14 }} onClick={onScan}><span style={{ fontSize: 17 }}>📷</span> Scan an item</button>
       {gam.lastScan && <div className="small muted" style={{ textAlign: 'center', marginTop: 8 }}>Last: {gam.lastScan}</div>}

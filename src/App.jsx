@@ -208,7 +208,7 @@ export default function App() {
         <div className="banner" style={{ margin: '12px 16px 0', color: '#a32d2d', borderColor: '#f0c1c1' }}>{error}</div>
       )}
 
-      {screen === 'home' && <Home gam={gam} firstName={user.firstName} nextReward={nextReward} onScan={() => setScreen('capture')} onSetGoal={setGoal} />}
+      {screen === 'home' && <Home gam={gam} firstName={user.firstName} nextReward={nextReward} onScan={() => setScreen('capture')} onSetGoal={setGoal} cityName={city.name} cityRules={(citiesMap[city.id] && citiesMap[city.id].exceptions) || []} />}
       {screen === 'challenges' && <Challenges challenges={CHALLENGES} joined={gam.joined || []} user={user} gam={gam} onJoin={joinChallenge} onLeave={leaveChallenge} />}
       {screen === 'profile' && <Profile user={user} gam={gam} onSignOut={signOut} />}
       {screen === 'citypicker' && <CityPicker cities={citiesMap} current={city.id} onPick={pickCity} onUseLocation={useMyLocation} onBack={() => setScreen('home')} />}
