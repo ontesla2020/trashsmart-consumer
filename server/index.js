@@ -43,43 +43,59 @@ const WAKING = [
   'Booting up — even AIs need a coffee first. Try again shortly.'
 ];
 
+const BIN_MAP = { recycle: 'recycle', organic: 'organics', trash: 'landfill', ewaste: 'ewaste_dropoff' };
+const CONF = { high: 0.95, medium: 0.7, low: 0.4 };
+const SCENE_Q = { good: 'ok', poor_lighting: 'too_dark', cluttered: 'cluttered', partial_view: 'blurry' };
+
 app.post('/api/scan', async (req, res) => {
   const { image, city = 'livermore', user_id } = req.body || {};
   if (!image) return res.status(400).json({ error: 'image required' });
 
-  const det = await detectItems(image);
+  // Livermore rules are the prompt default; other cities supply exception overrides.
+  const rules = await getRules();
+  const cityInfo = rules.cities[city];
+  const cityName = cityInfo?.name || 'Livermore';
+  const overrides = city === 'livermore' ? [] : (cityInfo?.exceptions || []);
+
+  const det = await detectItems(image, overrides);
   if (det.error === 'not_ready') {
     return res.status(503).json({ status: 'waking', message: WAKING[Math.floor(Math.random() * WAKING.length)] });
   }
   if (det.error === 'failed') {
     return res.status(502).json({ status: 'error', message: 'Hmm, our scanner hiccuped. Please try that photo again.' });
   }
-  const map = await effectiveMap(city);
-  const cities = (await getRules()).cities;
-  const cityName = cities[city]?.name || 'Livermore';
 
-  const items = det.items.map((it, i) => ({ ...it, item_id: String(i + 1) }));
+  // Translate the Livermore prompt's JSON into our existing response shape.
+  const items = det.items.map((it, i) => ({
+    item_id: String(i + 1),
+    label: it.name || 'Unknown item',
+    category: 'unknown',
+    bin: BIN_MAP[it.bin] || 'landfill',
+    soiled: !!it.soiled,
+    confidence: CONF[it.confidence] || 0.7,
+    tip: it.tip || ''
+  }));
 
-  // Low confidence / bad photo → ask before guessing.
-  const minConf = items.length ? Math.min(...items.map((i) => (typeof i.confidence === 'number' ? i.confidence : 1))) : 0;
-  const needs_disambiguation = items.length === 0 || (det.image_quality && det.image_quality !== 'ok') || minConf < 0.6;
+  const image_quality = SCENE_Q[det.scene_quality] || 'ok';
+  const minConf = items.length ? Math.min(...items.map((i) => i.confidence)) : 0;
+  const needs_disambiguation = items.length === 0
+    || det.scene_quality === 'poor_lighting'
+    || det.scene_quality === 'partial_view'
+    || (items.length > 0 && items.every((i) => i.confidence <= 0.4));
 
   const recommendations = items.map((it) => {
-    const bin = binFor(it.category, map);
-    const info = BIN_INFO[bin] || BIN_INFO.landfill;
-    return { item_id: it.item_id, label: it.label, bin, action: info.action, reasoning: info.why };
+    const info = BIN_INFO[it.bin] || BIN_INFO.landfill;
+    return { item_id: it.item_id, label: it.label, bin: it.bin, action: info.action, reasoning: it.tip || info.why };
   });
 
-  const multi = items.length > 1;
-  // Points per item, matching the in-app "Points per item" guide.
   const points_awarded = needs_disambiguation ? 0
     : recommendations.reduce((a, r) => a + (BIN_INFO[r.bin]?.points || 0), 0);
 
-  const overall = multi
-    ? 'Two things in one — separate them: empty the contents, then sort the packaging.'
-    : recommendations[0]?.action ? `${recommendations[0].action}.` : '';
+  const overall = items.length > 1
+    ? 'Multiple items — sort each into its bin below.'
+    : (recommendations[0] ? `${recommendations[0].action}.` : '');
 
-  if (points_awarded) { try { await recordPoints(user_id, points_awarded, items[0]?.category); } catch (e) { /* ignore */ } }
+  if (points_awarded) { try { await recordPoints(user_id, points_awarded, items[0]?.bin); } catch (e) { /* ignore */ } }
 
   res.json({
     scan_id: Math.random().toString(36).slice(2, 10),
@@ -91,7 +107,7 @@ app.post('/api/scan', async (req, res) => {
     needs_disambiguation,
     points_awarded,
     detection_source: det.source,
-    image_quality: det.image_quality,
+    image_quality,
     confidence_overall: minConf
   });
 });
