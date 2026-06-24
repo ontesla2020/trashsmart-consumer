@@ -24,7 +24,7 @@ export default function Capture({ onCapture }) {
     const f = e.target.files?.[0];
     if (!f) return;
     const reader = new FileReader();
-    reader.onload = async () => setPreview(await downscale(reader.result));
+    reader.onload = async () => setPreview(await downscale(reader.result, 768, 0.7));
     reader.readAsDataURL(f);
   }
 

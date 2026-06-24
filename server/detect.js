@@ -78,7 +78,7 @@ export async function detectItems(dataUrl, overrides = []) {
           { role: 'system', content: system },
           { role: 'user', content: [
             { type: 'text', text: 'Identify the waste item(s) in this photo and return the JSON.' },
-            { type: 'image_url', image_url: { url: dataUrl } }
+            { type: 'image_url', image_url: { url: dataUrl, detail: 'low' } }
           ] }
         ]
       })
