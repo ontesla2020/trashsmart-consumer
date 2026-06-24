@@ -5,6 +5,10 @@ export default function Result({ result, onDone }) {
   const [feedback, setFeedback] = useState(null);
   const recs = result.recommendations || [];
   const multi = recs.length > 1;
+  const cityName = result.location?.city || 'Livermore';
+  const whyText = multi
+    ? `Per ${cityName} curbside rules, sort each item into the bin shown above.`
+    : (recs[0] ? `Per ${cityName} curbside rules, this goes in ${BIN_LABEL[recs[0].bin]}.` : '');
 
   return (
     <div className="body">
@@ -32,10 +36,13 @@ export default function Result({ result, onDone }) {
         );
       })}
 
-      {result.overall_guidance && (
+      {whyText && (
         <div className="card" style={{ marginTop: 4, background: '#f7faf8' }}>
           <div className="row" style={{ gap: 7 }}><span>🧠</span><b className="small">Why</b></div>
-          <div className="small muted" style={{ marginTop: 4 }}>{result.overall_guidance}</div>
+          <div className="small muted" style={{ marginTop: 4 }}>{whyText}</div>
+          <a className="learnmore" href="https://resource.stopwaste.org/" target="_blank" rel="noopener noreferrer">
+            Learn more at StopWaste ↗
+          </a>
         </div>
       )}
 

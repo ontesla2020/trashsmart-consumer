@@ -102,6 +102,8 @@ input,textarea,select{-webkit-user-select:text;user-select:text}
 
 .banner{font-size:11px;color:#5a635c;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-top:12px;text-align:center}
 .src{font-size:10px;color:#9aa39c}
+.learnmore{display:inline-block;margin-top:8px;font-size:12px;font-weight:600;color:var(--green);text-decoration:none}
+.learnmore:active{opacity:.6}
 
 .bottomnav{flex:none;height:60px;padding-bottom:env(safe-area-inset-bottom);background:rgba(255,255,255,.9);backdrop-filter:saturate(180%) blur(14px);-webkit-backdrop-filter:saturate(180%) blur(14px);border-top:1px solid var(--line);display:flex;align-items:center}
 .navi{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10px;color:#97a09a;font-weight:600;background:none;border:none;cursor:pointer;flex:1 1 0;height:100%}
