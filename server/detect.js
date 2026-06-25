@@ -49,6 +49,7 @@ Batteries (all types); cell phones & computers; non-working electronics; househo
 10. Nylon mesh tea bags → trash; paper tea bags → organic.
 11. Natural corks → organic; synthetic → trash.
 12. Foil-lined cardboard → ALWAYS trash.
+13. Clean dry paper is RECYCLE even if crumpled, folded, balled-up, or wadded — crumpling does NOT make it trash. Only treat paper as organic if visibly food-soiled or wet (paper towels, napkins, used tissues), or as trash if it is a thermal receipt, photo/photo paper, parchment/freezer paper, or plastic-coated paper.
 
 ## IF ITEM IS NOT IN RULES
 Use general California waste knowledge. When uncertain, default to trash and add tip: "For exact Livermore rules, check resource.stopwaste.org"
