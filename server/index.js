@@ -12,8 +12,47 @@ import { upsertProfile, recordPoints, joinChallenge, leaveChallenge, leaderboard
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-app.use(cors());
+app.set('trust proxy', 1); // Render/Cloudflare sit in front — trust X-Forwarded-For for real client IP.
+
+// Only allow our own front-end (and local dev) to call the API. Comma-separated
+// list in ALLOWED_ORIGINS overrides the defaults in production.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ||
+  'https://trashsmart.ai,https://app.trashsmart.ai,http://localhost:5174,http://localhost:8788')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json({ limit: '20mb' }));
+
+// Reject API calls whose Origin isn't ours (blocks other sites / casual scripts
+// from hammering the endpoint). Browsers always send Origin on cross-site POSTs.
+function sameOriginOnly(req, res, next) {
+  const origin = req.get('origin');
+  if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+    return res.status(403).json({ status: 'forbidden', message: 'Not allowed.' });
+  }
+  next();
+}
+
+// Tiny in-memory per-IP rate limiter (no external deps). Resets each window.
+function rateLimit({ windowMs, max }) {
+  const hits = new Map();
+  return (req, res, next) => {
+    const now = Date.now();
+    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+    const rec = hits.get(ip);
+    if (!rec || now > rec.reset) {
+      hits.set(ip, { count: 1, reset: now + windowMs });
+    } else if (rec.count >= max) {
+      const retry = Math.ceil((rec.reset - now) / 1000);
+      res.set('Retry-After', String(retry));
+      return res.status(429).json({ status: 'rate_limited', message: 'Too many scans — give it a moment and try again.' });
+    } else {
+      rec.count++;
+    }
+    if (hits.size > 5000) { for (const [k, v] of hits) if (now > v.reset) hits.delete(k); }
+    next();
+  };
+}
+const scanLimiter = rateLimit({ windowMs: 60 * 1000, max: 20 }); // 20 scans / IP / minute
 
 // Friendly, action-oriented guidance per destination bin.
 // Points are per item and match the in-app "Points per item" guide.
@@ -47,7 +86,7 @@ const BIN_MAP = { recycle: 'recycle', organic: 'organics', trash: 'landfill', ew
 const CONF = { high: 0.95, medium: 0.7, low: 0.4 };
 const SCENE_Q = { good: 'ok', poor_lighting: 'too_dark', cluttered: 'cluttered', partial_view: 'blurry' };
 
-app.post('/api/scan', async (req, res) => {
+app.post('/api/scan', sameOriginOnly, scanLimiter, async (req, res) => {
   const { image, city = 'livermore', user_id } = req.body || {};
   if (!image) return res.status(400).json({ error: 'image required' });
 

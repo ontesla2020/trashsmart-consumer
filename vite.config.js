@@ -25,6 +25,11 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    // Never ship source maps in production — keeps the minified bundle
+    // from being reversed back into readable React source.
+    sourcemap: false
+  },
   server: {
     host: true,
     port: 5174,
