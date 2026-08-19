@@ -34,19 +34,35 @@ function loadUser() {
     return u;
   } catch { return null; }
 }
+// Local calendar-day key (not UTC) — matches the weekday row in Home.jsx,
+// which also uses local time (`new Date().getDay()`), so "today" means the
+// same thing in both places.
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
 function loadGam() {
   try {
     const s = JSON.parse(localStorage.getItem('ts_gam2') || 'null');
-    if (!s) return INITIAL_GAM;
-    // Restore only progress (done/goal) — labels/colors always come from current defaults.
+    if (!s) return { ...INITIAL_GAM, ringDay: todayKey() };
+    // A new calendar day since the last save (or a first-ever save, which
+    // has no ringDay yet) means the rings start over at 0 — no history is
+    // kept, this just re-zeroes the count. Goals the user customized carry
+    // over; only the done count resets.
+    const isNewDay = s.ringDay !== todayKey();
     const rings = {};
     for (const k of Object.keys(INITIAL_GAM.rings)) {
       const base = INITIAL_GAM.rings[k];
       const saved = s.rings && s.rings[k];
-      rings[k] = { ...base, done: saved?.done ?? base.done, goal: saved?.goal ?? base.goal };
+      rings[k] = {
+        ...base,
+        done: isNewDay ? 0 : (saved?.done ?? base.done),
+        goal: saved?.goal ?? base.goal
+      };
     }
-    return { ...INITIAL_GAM, ...s, rings };
-  } catch { return INITIAL_GAM; }
+    return { ...INITIAL_GAM, ...s, rings, ringDay: todayKey() };
+  } catch { return { ...INITIAL_GAM, ringDay: todayKey() }; }
 }
 
 export default function App() {
@@ -101,11 +117,25 @@ export default function App() {
     try { localStorage.setItem('ts_onboarded', '1'); } catch (e) { /* ignore */ }
     setOnboarded(true);
   }
-  function completeLogin(u) {
+  async function completeLogin(u) {
     try { localStorage.setItem('ts_user', JSON.stringify(u)); } catch (e) { /* ignore */ }
     api.saveProfile(u).catch(() => {});
-    // Fresh account starts at the welcome bonus with preset rings.
-    setGam(JSON.parse(JSON.stringify(INITIAL_GAM)));
+    // Restore the real point total from the server (the ledger is the
+    // source of truth) instead of always starting fresh — this is what
+    // makes "same phone number logs back into the same account" actually
+    // mean something. Rings / streak / diverted-lb aren't tracked
+    // server-side yet, so those still reset to their defaults for now.
+    let restoredPoints = 0;
+    try { const r = await api.getUserPoints(u.id); restoredPoints = r?.points || 0; } catch (e) { /* ignore, defaults to 0 */ }
+    const fresh = JSON.parse(JSON.stringify(INITIAL_GAM));
+    fresh.points = restoredPoints;
+    fresh.ringDay = todayKey();
+    // Rings always start at 0 done — INITIAL_GAM's non-zero ring values
+    // (2/4, 1/3, 1/2) are just seeded "looks populated" demo numbers, not a
+    // real starting point for an actual login. Goals stay at the defaults
+    // since per-user goal customization isn't tracked server-side either.
+    for (const k of Object.keys(fresh.rings)) fresh.rings[k].done = 0;
+    setGam(fresh);
     setUser(u);
     setScreen('home');
   }
@@ -180,9 +210,27 @@ export default function App() {
     setGam((g) => ({ ...g, joined: (g.joined || []).filter((x) => x !== id) }));
   }
 
-  function confirmRedeem(reward) {
-    setGam((g) => ({ ...g, points: g.points - reward.cost }));
-    setScreen('rewards');
+  // Spends points server-side and returns the redemption ticket (code +
+  // expiry) for Redeem.jsx to display, or null on failure (Redeem.jsx shows
+  // its own error in that case). Does NOT change screens here — the ticket
+  // stays on the redeem screen until the user taps "Done".
+  async function confirmRedeem(reward) {
+    try {
+      const result = await api.redeemReward(user.id, reward.id);
+      if (!result.ok) {
+        setError(result.reason === 'insufficient_points'
+          ? "You don't have enough points for that yet."
+          : "That didn't go through — try again.");
+        return null;
+      }
+      // Real deduction already happened server-side; reflecting it locally
+      // now is safe because we know it actually succeeded.
+      setGam((g) => ({ ...g, points: g.points - reward.cost }));
+      return result;
+    } catch (e) {
+      setError(e.message);
+      return null;
+    }
   }
 
   const showNav = TAB_SCREENS.includes(screen);

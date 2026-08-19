@@ -17,7 +17,7 @@ export const REWARDS = [
   { id: 'coffee', vendor: 'Inklings Coffee & Tea', reward: 'Free 12oz coffee', emoji: '☕', bg: 'amber', cost: 1600, distance: '0.4 mi' },
   { id: 'deli', vendor: 'First St. Deli', reward: '$3 off any sandwich', emoji: '🥪', bg: 'green', cost: 1200, distance: '0.6 mi' },
   { id: 'gelato', vendor: 'Gelato Mio', reward: 'Free single scoop', emoji: '🍦', bg: 'blue', cost: 2000, distance: '0.9 mi' },
-  { id: 'tree', vendor: 'Donate to StopWaste', reward: 'Plant a tree locally', emoji: '🌱', bg: 'gray', cost: 500, distance: '—' }
+  { id: 'tree', vendor: 'Donate to StopWaste', reward: 'Plant a tree locally', emoji: '🌱', bg: 'gray', cost: 50, distance: '—' }
 ];
 
 // Roughly mirrors the server's per-item points (base + bin bonus).

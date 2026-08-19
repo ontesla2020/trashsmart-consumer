@@ -28,6 +28,15 @@ export async function recordPoints(userId, points, category) {
   await sb.from('ledger').insert({ user_id: userId, points, category: category || null });
 }
 
+// All-time point total for one user, straight from the ledger (the same
+// source of truth the leaderboards read from) — used to restore a returning
+// user's real points on login instead of starting them back at zero.
+export async function getUserPoints(userId) {
+  if (!sb || !userId) return 0;
+  const { data } = await sb.from('ledger').select('points').eq('user_id', userId);
+  return (data || []).reduce((sum, row) => sum + (row.points || 0), 0);
+}
+
 export async function joinChallenge(userId, cid) {
   if (!sb || !userId) return;
   await sb.from('memberships').upsert({ user_id: userId, challenge_id: cid }, { onConflict: 'user_id,challenge_id' });

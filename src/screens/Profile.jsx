@@ -16,6 +16,7 @@ export default function Profile({ user, gam, onSignOut }) {
         <div className="stat"><b>{gam.divertedLb}<small style={{ fontSize: 10 }}>lb</small></b><span>diverted</span></div>
       </div>
 
+      <button className="btn sec" style={{ marginTop: 16 }} onClick={onSignOut}>Log out</button>
     </div>
   );
 }

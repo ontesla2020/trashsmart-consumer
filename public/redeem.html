@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrashSmart — Redeem a code</title>
+<style>
+  :root { --green: #117A45; --ink: #1b1f1c; --muted: #6b7178; --line: #e4e7e3; --bg: #f4f6f4; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg); color: var(--ink); min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; padding: 32px 16px;
+  }
+  .wrap { width: 100%; max-width: 380px; }
+  .brand { display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 20px; }
+  .brand img { width: 32px; height: 32px; }
+  .brand b { font-size: 18px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 20px; text-align: center; }
+  input {
+    width: 100%; font-size: 24px; letter-spacing: 4px; text-align: center; text-transform: uppercase;
+    padding: 14px; border: 2px solid var(--line); border-radius: 10px; font-weight: 700;
+    box-sizing: border-box;
+  }
+  input:focus { outline: none; border-color: var(--green); }
+  button {
+    width: 100%; margin-top: 12px; padding: 14px; border: none; border-radius: 10px;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  .btn { background: var(--green); color: #fff; }
+  .btn:disabled { background: #a9b6ae; cursor: default; }
+  .btn.sec { background: #fff; color: var(--ink); border: 2px solid var(--line); }
+  .muted { color: var(--muted); font-size: 13px; }
+  .status { margin-top: 16px; padding: 14px; border-radius: 10px; font-size: 14px; text-align: left; }
+  .status.valid { background: #eaf6ee; color: #14532d; }
+  .status.used { background: #f4f4f4; color: var(--muted); }
+  .status.expired { background: #fdf2e9; color: #92400e; }
+  .status.not_found { background: #fdecec; color: #a32d2d; }
+  .reward-name { font-size: 17px; font-weight: 700; margin-bottom: 2px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand"><img src="/logo-icon.svg" alt="" /><b>TrashSmart</b></div>
+    <div class="card">
+      <div class="muted" style="margin-bottom: 10px;">Enter the code the customer shows you</div>
+      <input id="code" maxlength="8" placeholder="ABCD1234" autocomplete="off" autocapitalize="characters" />
+      <button class="btn" id="checkBtn">Check code</button>
+      <div id="result"></div>
+    </div>
+    <div class="muted" style="text-align:center; margin-top: 14px;">One code = one redemption. Checking a code doesn't use it — only "Mark as redeemed" does.</div>
+  </div>
+
+<script>
+  const codeInput = document.getElementById('code');
+  const checkBtn = document.getElementById('checkBtn');
+  const resultEl = document.getElementById('result');
+
+  codeInput.addEventListener('input', () => {
+    codeInput.value = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  });
+  codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkCode(); });
+
+  async function checkCode() {
+    const code = codeInput.value.trim();
+    if (!code) return;
+    checkBtn.disabled = true;
+    checkBtn.textContent = 'Checking…';
+    try {
+      const res = await fetch('/api/redeem/' + encodeURIComponent(code));
+      const data = await res.json();
+      render(code, data);
+    } catch (e) {
+      resultEl.innerHTML = '<div class="status not_found">Couldn\'t reach the server — try again.</div>';
+    } finally {
+      checkBtn.disabled = false;
+      checkBtn.textContent = 'Check code';
+    }
+  }
+
+  function render(code, data) {
+    if (data.status === 'valid') {
+      resultEl.innerHTML =
+        '<div class="status valid">' +
+          '<div class="reward-name">' + data.reward.emoji + ' ' + esc(data.reward.reward) + '</div>' +
+          '<div>' + esc(data.reward.vendor) + '</div>' +
+        '</div>' +
+        '<button class="btn" id="confirmBtn" style="margin-top:10px;">Mark as redeemed</button>';
+      document.getElementById('confirmBtn').addEventListener('click', () => confirmCode(code));
+    } else if (data.status === 'used') {
+      resultEl.innerHTML =
+        '<div class="status used">' +
+          '<div class="reward-name">' + esc(data.reward?.reward || 'This code') + '</div>' +
+          '<div>Already redeemed' + (data.redeemedAt ? ' at ' + new Date(data.redeemedAt).toLocaleTimeString() : '') + '.</div>' +
+        '</div>';
+    } else {
+      resultEl.innerHTML = '<div class="status not_found">Not a valid TrashSmart code.</div>';
+    }
+  }
+
+  async function confirmCode(code) {
+    const btn = document.getElementById('confirmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Marking…';
+    try {
+      const res = await fetch('/api/redeem/' + encodeURIComponent(code) + '/confirm', { method: 'POST' });
+      const data = await res.json();
+      render(code, data);
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Mark as redeemed';
+    }
+  }
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+
+  checkBtn.addEventListener('click', checkCode);
+</script>
+</body>
+</html>

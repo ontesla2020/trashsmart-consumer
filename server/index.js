@@ -8,7 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { detectItems } from './detect.js';
 import { binFor } from './scoring.js';
 import { effectiveMap, getRules } from './rules.js';
-import { upsertProfile, recordPoints, joinChallenge, leaveChallenge, leaderboard } from './leaderboards.js';
+import { upsertProfile, recordPoints, joinChallenge, leaveChallenge, leaderboard, getUserPoints } from './leaderboards.js';
+import { createRedemption, lookupRedemption, confirmRedemption } from './redemptions.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -53,6 +54,7 @@ function rateLimit({ windowMs, max }) {
   };
 }
 const scanLimiter = rateLimit({ windowMs: 60 * 1000, max: 20 }); // 20 scans / IP / minute
+const redeemLimiter = rateLimit({ windowMs: 60 * 1000, max: 30 }); // 30 code checks / IP / minute — cheap defense against code-guessing
 
 // Friendly, action-oriented guidance per destination bin.
 // Points are per item and match the in-app "Points per item" guide.
@@ -69,11 +71,39 @@ app.get('/api/rules', async (_req, res) => res.json(await getRules()));
 
 // ---- Profiles & leaderboards ----
 app.post('/api/profile', async (req, res) => { try { await upsertProfile(req.body || {}); } catch (e) { /* ignore */ } res.json({ ok: true }); });
+app.get('/api/profile/:id/points', async (req, res) => {
+  try { res.json({ points: await getUserPoints(req.params.id) }); }
+  catch (e) { res.json({ points: 0 }); }
+});
 app.post('/api/challenges/:id/join', async (req, res) => { try { await joinChallenge(req.body?.user_id, req.params.id); } catch (e) { /* ignore */ } res.json({ ok: true }); });
 app.post('/api/challenges/:id/leave', async (req, res) => { try { await leaveChallenge(req.body?.user_id, req.params.id); } catch (e) { /* ignore */ } res.json({ ok: true }); });
 app.get('/api/challenges/:id/leaderboard', async (req, res) => {
   try { res.json(await leaderboard(req.params.id, req.query.user_id, req.query.school)); }
   catch (e) { res.json({ live: false, rows: [] }); }
+});
+
+// ---- Reward redemption ----
+// 1. Consumer app calls this to spend points and get a one-time code.
+app.post('/api/rewards/redeem', sameOriginOnly, async (req, res) => {
+  const { user_id, reward_id } = req.body || {};
+  if (!user_id || !reward_id) return res.status(400).json({ ok: false, reason: 'missing_fields' });
+  try {
+    const result = await createRedemption(user_id, reward_id);
+    res.status(result.ok ? 200 : (result.reason === 'insufficient_points' ? 400 : 503)).json(result);
+  } catch (e) {
+    res.status(503).json({ ok: false, reason: 'unavailable' });
+  }
+});
+// 2. The public store-facing verification page (public/redeem.html) checks a
+// code here — read-only, no side effects, safe with no auth.
+app.get('/api/redeem/:code', redeemLimiter, async (req, res) => {
+  try { res.json(await lookupRedemption(req.params.code)); }
+  catch (e) { res.json({ status: 'not_found' }); }
+});
+// 3. Same page's "Mark as redeemed" button — the one-time-use gate.
+app.post('/api/redeem/:code/confirm', redeemLimiter, async (req, res) => {
+  try { res.json(await confirmRedemption(req.params.code)); }
+  catch (e) { res.status(503).json({ status: 'not_found' }); }
 });
 
 const WAKING = [
