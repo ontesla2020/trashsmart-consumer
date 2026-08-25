@@ -38,6 +38,13 @@ export function getUserPoints(id) {
   return req(`/api/profile/${id}/points`);
 }
 
+// Look up an existing profile by id — null if no account exists yet.
+// Powers the "Welcome back" screen so returning users skip re-entering name/school.
+export async function getProfile(id) {
+  const r = await req(`/api/profile/${id}`);
+  return r.profile || null;
+}
+
 // Spends points server-side and returns a one-time redemption code to show
 // at the register, or { ok:false, reason } if it can't (not enough points,
 // unknown reward, etc).

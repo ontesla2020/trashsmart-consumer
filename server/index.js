@@ -1,6 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
+import dns from 'node:dns';
+
+// Some networks (flaky/unsupported IPv6 on home routers, mainly) make Node's
+// built-in fetch fail DNS lookups it tries over IPv6 first, even though the
+// same host resolves fine over IPv4 (e.g. via curl or a browser). Prefer
+// IPv4 results so outbound calls (Supabase, OpenAI) don't hit that.
+dns.setDefaultResultOrder('ipv4first');
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -8,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { detectItems } from './detect.js';
 import { binFor } from './scoring.js';
 import { effectiveMap, getRules } from './rules.js';
-import { upsertProfile, recordPoints, joinChallenge, leaveChallenge, leaderboard, getUserPoints } from './leaderboards.js';
+import { upsertProfile, recordPoints, joinChallenge, leaveChallenge, leaderboard, getUserPoints, getProfile } from './leaderboards.js';
 import { createRedemption, lookupRedemption, confirmRedemption } from './redemptions.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -71,7 +78,13 @@ app.get('/api/rules', async (_req, res) => res.json(await getRules()));
 
 // ---- Profiles & leaderboards ----
 app.post('/api/profile', async (req, res) => { try { await upsertProfile(req.body || {}); } catch (e) { /* ignore */ } res.json({ ok: true }); });
+app.get('/api/profile/:id', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try { res.json({ profile: await getProfile(req.params.id) }); }
+  catch (e) { res.json({ profile: null }); }
+});
 app.get('/api/profile/:id/points', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   try { res.json({ points: await getUserPoints(req.params.id) }); }
   catch (e) { res.json({ points: 0 }); }
 });

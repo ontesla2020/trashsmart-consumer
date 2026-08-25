@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 import { ALAMEDA_SCHOOLS } from '../schools.js';
+import * as api from '../api.js';
 
 function digits(s) { return (s || '').replace(/\D/g, ''); }
 
@@ -58,12 +59,18 @@ async function phoneToId(phone) {
 }
 
 export default function Login({ onComplete }) {
-  const [firstName, setFirstName] = useState('');
+  // 'phone'    -> just asking for a mobile number
+  // 'welcome'  -> recognized number, confirming the saved account
+  // 'register' -> unrecognized number (or lookup failed), collecting name + school
+  const [step, setStep] = useState('phone');
   const [phone, setPhone] = useState('');
+  const [firstName, setFirstName] = useState('');
   const [org, setOrg] = useState('');
   const [query, setQuery] = useState('');
   const [showSug, setShowSug] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [existing, setExisting] = useState(null); // { id, firstName, org }
+  const [lookupFailed, setLookupFailed] = useState(false);
 
   const phoneTouched = digits(phone).length >= 10;
   const phoneOk = isValidPhone(phone);
@@ -75,39 +82,112 @@ export default function Login({ onComplete }) {
 
   function pickSchool(name) { setOrg(name); setQuery(name); setShowSug(false); }
 
-  async function submit() {
+  // Step 1 -> 2: look up whether this phone number already has an account,
+  // so we only ever ask for name/school once, ever, per phone number.
+  // If the lookup itself fails (offline, server hiccup), fall through to
+  // registration rather than stranding the person — worst case they
+  // re-enter info they'd already given us once.
+  async function checkPhone() {
+    if (!phoneOk || submitting) return;
+    setSubmitting(true);
+    setLookupFailed(false);
+    try {
+      const id = await phoneToId(phone);
+      const profile = await api.getProfile(id);
+      if (profile) {
+        setExisting({ id, firstName: profile.first_name || '', org: profile.school || '' });
+        setStep('welcome');
+      } else {
+        setStep('register');
+      }
+    } catch {
+      setLookupFailed(true);
+      setStep('register');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function confirmWelcome() {
+    if (!existing || submitting) return;
+    setSubmitting(true);
+    try {
+      // Sign in with exactly what's saved — never anything re-typed here,
+      // so a returning login can't silently overwrite the stored school.
+      await onComplete({ id: existing.id, firstName: existing.firstName, phone: phone.trim(), org: existing.org });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function submitRegister() {
     if (!detailsOk || submitting) return;
     setSubmitting(true);
     try {
       const id = await phoneToId(phone);
-      // Await onComplete (App.jsx's completeLogin) so "One sec…" covers the
-      // whole flow, including the server round-trip that restores this
-      // account's real point total — not just the local id hashing.
       await onComplete({ id, firstName: firstName.trim(), phone: phone.trim(), org: org.trim() });
     } finally {
       setSubmitting(false);
     }
   }
 
+  if (step === 'phone') {
+    return (
+      <div className="loginwrap">
+        <div className="loginhero">
+          <img className="logo" src="/logo-icon.svg" alt="TrashSmart" />
+          <h2 style={{ fontSize: 22 }}>Welcome to TrashSmart</h2>
+          <div className="small muted">Scan, sort it right, earn rewards. No password needed.</div>
+        </div>
+
+        <div className="field">
+          <label>Mobile number <span className="req">*</span></label>
+          <input className="ti" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Your mobile number" />
+          {phoneTouched && !phoneOk && (
+            <div className="tiny" style={{ color: '#a32d2d', marginTop: 4 }}>That doesn't look like a real US mobile number — double-check it.</div>
+          )}
+        </div>
+
+        <button className="btn" style={{ marginTop: 6 }} disabled={!phoneOk || submitting} onClick={checkPhone}>
+          {submitting ? 'One sec…' : 'Continue'}
+        </button>
+      </div>
+    );
+  }
+
+  if (step === 'welcome') {
+    return (
+      <div className="loginwrap">
+        <div className="loginhero">
+          <img className="logo" src="/logo-icon.svg" alt="TrashSmart" />
+          <h2 style={{ fontSize: 22 }}>Welcome back, {existing.firstName || 'there'}!</h2>
+          <div className="small muted">{existing.org || 'No school on file yet'}</div>
+        </div>
+
+        <button className="btn" style={{ marginTop: 6 }} disabled={submitting} onClick={confirmWelcome}>
+          {submitting ? 'One sec…' : 'Continue'}
+        </button>
+        <div className="tiny muted" style={{ textAlign: 'center', marginTop: 12 }}>
+          Wrong school? Update it anytime from your Profile tab.
+        </div>
+      </div>
+    );
+  }
+
+  // step === 'register'
   return (
     <div className="loginwrap">
       <div className="loginhero">
         <img className="logo" src="/logo-icon.svg" alt="TrashSmart" />
-        <h2 style={{ fontSize: 22 }}>Welcome to TrashSmart</h2>
-        <div className="small muted">Scan, sort it right, earn rewards. No password needed.</div>
+        <h2 style={{ fontSize: 22 }}>Let's get you set up</h2>
+        <div className="small muted">
+          {lookupFailed ? "Couldn't check for an existing account — let's set one up." : 'First time here — tell us a bit about you.'}
+        </div>
       </div>
 
       <div className="field">
         <label>First name <span className="req">*</span></label>
         <input className="ti" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Your first name" />
-      </div>
-
-      <div className="field">
-        <label>Mobile number <span className="req">*</span></label>
-        <input className="ti" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Your mobile number" />
-        {phoneTouched && !phoneOk && (
-          <div className="tiny" style={{ color: '#a32d2d', marginTop: 4 }}>That doesn't look like a real US mobile number — double-check it.</div>
-        )}
       </div>
 
       <div className="field" style={{ position: 'relative' }}>
@@ -125,7 +205,7 @@ export default function Login({ onComplete }) {
         )}
       </div>
 
-      <button className="btn" style={{ marginTop: 6 }} disabled={!detailsOk || submitting} onClick={submit}>
+      <button className="btn" style={{ marginTop: 6 }} disabled={!detailsOk || submitting} onClick={submitRegister}>
         {submitting ? 'One sec…' : 'Get started'}
       </button>
       <div className="tiny muted" style={{ textAlign: 'center', marginTop: 12 }}>

@@ -80,6 +80,30 @@ export default function App() {
 
   useEffect(() => { try { localStorage.setItem('ts_gam2', JSON.stringify(gam)); } catch (e) { /* ignore */ } }, [gam]);
 
+  // The rings' "done" counts are meant to reset at midnight, but loadGam()
+  // above only checks the date once, at page load. If the app is left open
+  // (or just backgrounded, which is the common case for a home-screen PWA)
+  // across midnight, that check never re-runs on its own — so also re-check
+  // whenever the app comes back to the foreground.
+  useEffect(() => {
+    function checkDayRollover() {
+      const today = todayKey();
+      setGam((g) => {
+        if (g.ringDay === today) return g;
+        const rings = {};
+        for (const k of Object.keys(g.rings)) rings[k] = { ...g.rings[k], done: 0 };
+        return { ...g, rings, ringDay: today };
+      });
+    }
+    function onVisible() { if (document.visibilityState === 'visible') checkDayRollover(); }
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', checkDayRollover);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', checkDayRollover);
+    };
+  }, []);
+
   // Load the list of cities (for the picker) and auto-detect once (unless the
   // user has manually chosen a city — that choice is persisted).
   useEffect(() => {
@@ -143,6 +167,15 @@ export default function App() {
     try { localStorage.removeItem('ts_user'); } catch (e) { /* ignore */ }
     setUser(null);
     setScreen('home');
+  }
+
+  // Updates just the saved school/org — used from the Profile tab so a
+  // change there never touches name/phone, and login never has to.
+  async function updateOrg(newOrg) {
+    const u = { ...user, org: newOrg };
+    try { localStorage.setItem('ts_user', JSON.stringify(u)); } catch (e) { /* ignore */ }
+    setUser(u);
+    try { await api.saveProfile(u); } catch (e) { /* ignore */ }
   }
 
   const nextReward = [...REWARDS].sort((a, b) => a.cost - b.cost).find((r) => r.cost > gam.points) || null;
@@ -258,7 +291,7 @@ export default function App() {
 
       {screen === 'home' && <Home gam={gam} firstName={user.firstName} nextReward={nextReward} onScan={() => setScreen('capture')} onSetGoal={setGoal} cityName={city.name} cityRules={(citiesMap[city.id] && citiesMap[city.id].exceptions) || []} />}
       {screen === 'challenges' && <Challenges challenges={CHALLENGES} joined={gam.joined || []} user={user} gam={gam} onJoin={joinChallenge} onLeave={leaveChallenge} />}
-      {screen === 'profile' && <Profile user={user} gam={gam} onSignOut={signOut} />}
+      {screen === 'profile' && <Profile user={user} gam={gam} onSignOut={signOut} onUpdateOrg={updateOrg} />}
       {screen === 'citypicker' && <CityPicker cities={citiesMap} current={city.id} onPick={pickCity} onUseLocation={useMyLocation} onBack={() => setScreen('home')} />}
       {screen === 'capture' && <Capture onCapture={handleScan} />}
       {screen === 'analyzing' && <Analyzing />}
