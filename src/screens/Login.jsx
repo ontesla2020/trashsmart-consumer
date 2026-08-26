@@ -5,6 +5,16 @@ import * as api from '../api.js';
 
 function digits(s) { return (s || '').replace(/\D/g, ''); }
 
+// Formats digits as the user types into 555-123-4567, capped at 10 digits
+// (a leading US country code, if pasted in, gets stripped elsewhere before
+// validation/hashing — this is purely a display convenience).
+function formatPhoneDisplay(raw) {
+  const d = digits(raw).slice(0, 10);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}-${d.slice(3)}`;
+  return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+}
+
 // Strip a leading US country code (1) if present, so "+1 (510) 555-0132"
 // and "5105550132" both normalize to the same 10 digits.
 function normalizedPhone(phone) {
@@ -142,7 +152,7 @@ export default function Login({ onComplete }) {
 
         <div className="field">
           <label>Mobile number <span className="req">*</span></label>
-          <input className="ti" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Your mobile number" />
+          <input className="ti" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(formatPhoneDisplay(e.target.value))} placeholder="555-123-4567" />
           {phoneTouched && !phoneOk && (
             <div className="tiny" style={{ color: '#a32d2d', marginTop: 4 }}>That doesn't look like a real US mobile number — double-check it.</div>
           )}
