@@ -16,7 +16,7 @@ import Nav from './components/Nav.jsx';
 import * as api from './api.js';
 import { BIN_LABEL } from './lib.js';
 import { resolveLocation, slugify } from './geo.js';
-import { INITIAL_GAM, REWARDS, CHALLENGES } from './data.js';
+import { INITIAL_GAM, REWARDS, POINTS_GUIDE, CHALLENGES } from './data.js';
 
 const TAB_SCREENS = ['home', 'challenges', 'rewards', 'profile'];
 
@@ -77,6 +77,11 @@ export default function App() {
   const [error, setError] = useState(null);
   const [city, setCity] = useState(loadCity);
   const [citiesMap, setCitiesMap] = useState({});
+  // Seeded with the local fallback constants so the UI has something to show
+  // immediately; overwritten below once the live (Supabase-backed) values
+  // load, so shops/prices/point-values can change without an app update.
+  const [rewards, setRewards] = useState(REWARDS);
+  const [pointsGuide, setPointsGuide] = useState(POINTS_GUIDE);
 
   useEffect(() => { try { localStorage.setItem('ts_gam2', JSON.stringify(gam)); } catch (e) { /* ignore */ } }, [gam]);
 
@@ -110,6 +115,8 @@ export default function App() {
     if (!user) return;
     let cancelled = false;
     api.getRules().then((r) => { if (!cancelled) setCitiesMap(r.cities || {}); }).catch(() => {});
+    api.getRewards().then((r) => { if (!cancelled && r.length) setRewards(r); }).catch(() => {});
+    api.getPointsGuide().then((g) => { if (!cancelled && g.length) setPointsGuide(g); }).catch(() => {});
     if (!localStorage.getItem('ts_city')) {
       (async () => {
         const loc = await resolveLocation();
@@ -178,7 +185,7 @@ export default function App() {
     try { await api.saveProfile(u); } catch (e) { /* ignore */ }
   }
 
-  const nextReward = [...REWARDS].sort((a, b) => a.cost - b.cost).find((r) => r.cost > gam.points) || null;
+  const nextReward = [...rewards].sort((a, b) => a.cost - b.cost).find((r) => r.cost > gam.points) || null;
 
   async function handleScan(image) {
     setError(null);
@@ -289,7 +296,7 @@ export default function App() {
         <div className="banner" style={{ margin: '12px 16px 0', color: '#a32d2d', borderColor: '#f0c1c1' }}>{error}</div>
       )}
 
-      {screen === 'home' && <Home gam={gam} firstName={user.firstName} nextReward={nextReward} onScan={() => setScreen('capture')} onSetGoal={setGoal} cityName={city.name} cityRules={(citiesMap[city.id] && citiesMap[city.id].exceptions) || []} />}
+      {screen === 'home' && <Home gam={gam} firstName={user.firstName} nextReward={nextReward} onScan={() => setScreen('capture')} onSetGoal={setGoal} cityName={city.name} cityRules={(citiesMap[city.id] && citiesMap[city.id].exceptions) || []} pointsGuide={pointsGuide} />}
       {screen === 'challenges' && <Challenges challenges={CHALLENGES} joined={gam.joined || []} user={user} gam={gam} onJoin={joinChallenge} onLeave={leaveChallenge} />}
       {screen === 'profile' && <Profile user={user} gam={gam} onSignOut={signOut} onUpdateOrg={updateOrg} />}
       {screen === 'citypicker' && <CityPicker cities={citiesMap} current={city.id} onPick={pickCity} onUseLocation={useMyLocation} onBack={() => setScreen('home')} />}
@@ -300,7 +307,7 @@ export default function App() {
         <Disambiguate result={active} onRetake={() => setScreen('capture')} onProceed={() => setScreen('result')} />
       )}
       {screen === 'rewards' && (
-        <Rewards gam={gam} rewards={REWARDS} nextReward={nextReward} onRedeem={(r) => { setRedeemReward(r); setScreen('redeem'); }} />
+        <Rewards gam={gam} rewards={rewards} nextReward={nextReward} onRedeem={(r) => { setRedeemReward(r); setScreen('redeem'); }} />
       )}
       {screen === 'redeem' && redeemReward && (
         <Redeem reward={redeemReward} gam={gam} onConfirm={confirmRedeem} onCancel={() => setScreen('rewards')} />

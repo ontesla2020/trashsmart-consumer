@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Rings from '../components/Rings.jsx';
 import { POINTS_GUIDE } from '../data.js';
 
-export default function Home({ gam, firstName, onScan, onSetGoal, nextReward, cityName, cityRules = [] }) {
+export default function Home({ gam, firstName, onScan, onSetGoal, nextReward, cityName, cityRules = [], pointsGuide = POINTS_GUIDE }) {
   const { rings } = gam;
   const order = ['recycle', 'organics', 'landfill'];
   const [goalKey, setGoalKey] = useState('recycle');
@@ -76,7 +76,7 @@ export default function Home({ gam, firstName, onScan, onSetGoal, nextReward, ci
       <div className="card" style={{ marginTop: 12 }}>
         <div className="row sp"><b className="small">Points per item</b><span className="tiny muted">scan to earn</span></div>
         <div style={{ marginTop: 8 }}>
-          {POINTS_GUIDE.map((g) => (
+          {pointsGuide.map((g) => (
             <div className="row sp" key={g.label} style={{ padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
               <span className="small"><span style={{ marginRight: 8 }}>{g.emoji}</span>{g.label}</span>
               <span className="pill green">+{g.points}</span>

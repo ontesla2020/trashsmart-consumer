@@ -28,6 +28,24 @@ export function getRules() {
   return req('/api/rules');
 }
 
+// Live reward catalog (Supabase-backed on the server) — lets shops/prices
+// change without an app update.
+export async function getRewards() {
+  const r = await req('/api/rewards');
+  return r.rewards || [];
+}
+
+// Live points-per-category map, as an array shaped for display (highest
+// points first) — same source of truth the server uses to award points.
+export async function getPointsGuide() {
+  const r = await req('/api/points');
+  const map = r.points || {};
+  const EMOJI = { ewaste_dropoff: '🔌', hazardous_dropoff: '⚠️', recycle: '♻️', organics: '🥬', landfill: '🗑️' };
+  return Object.entries(map)
+    .map(([bin, v]) => ({ label: v.name, points: v.points, emoji: EMOJI[bin] || '♻️' }))
+    .sort((a, b) => b.points - a.points);
+}
+
 export function saveProfile(user) {
   return req('/api/profile', json('POST', user));
 }

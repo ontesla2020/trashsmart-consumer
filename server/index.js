@@ -17,6 +17,8 @@ import { binFor } from './scoring.js';
 import { effectiveMap, getRules } from './rules.js';
 import { upsertProfile, recordPoints, joinChallenge, leaveChallenge, leaderboard, getUserPoints, getProfile } from './leaderboards.js';
 import { createRedemption, lookupRedemption, confirmRedemption } from './redemptions.js';
+import { getRewards } from './rewards.js';
+import { getPointValues } from './points.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -63,18 +65,18 @@ function rateLimit({ windowMs, max }) {
 const scanLimiter = rateLimit({ windowMs: 60 * 1000, max: 20 }); // 20 scans / IP / minute
 const redeemLimiter = rateLimit({ windowMs: 60 * 1000, max: 30 }); // 30 code checks / IP / minute — cheap defense against code-guessing
 
-// Friendly, action-oriented guidance per destination bin.
-// Points are per item and match the in-app "Points per item" guide.
-const BIN_INFO = {
-  organics: { name: 'Organics', action: 'Compost it', why: 'Food and plant scraps are composted here.', points: 15 },
-  recycle: { name: 'Recycle', action: 'Rinse & recycle', why: 'Empty and rinse, then place in the blue cart.', points: 20 },
-  landfill: { name: 'Landfill', action: 'Trash it', why: "This isn't recyclable or compostable locally.", points: 5 },
-  ewaste_dropoff: { name: 'E-waste drop-off', action: 'Take to drop-off', why: 'Electronics need a special drop-off — never the curb.', points: 30 },
-  hazardous_dropoff: { name: 'Hazardous drop-off', action: 'Take to drop-off', why: 'Hazardous material needs a designated facility.', points: 30 }
-};
-
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.get('/api/rules', async (_req, res) => res.json(await getRules()));
+app.get('/api/rewards', async (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try { res.json({ rewards: await getRewards() }); }
+  catch (e) { res.json({ rewards: [] }); }
+});
+app.get('/api/points', async (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try { res.json({ points: await getPointValues() }); }
+  catch (e) { res.json({ points: {} }); }
+});
 
 // ---- Profiles & leaderboards ----
 app.post('/api/profile', async (req, res) => { try { await upsertProfile(req.body || {}); } catch (e) { /* ignore */ } res.json({ ok: true }); });
@@ -165,13 +167,14 @@ app.post('/api/scan', sameOriginOnly, scanLimiter, async (req, res) => {
     || det.scene_quality === 'partial_view'
     || (items.length > 0 && items.every((i) => i.confidence <= 0.4));
 
+  const pointValues = await getPointValues();
   const recommendations = items.map((it) => {
-    const info = BIN_INFO[it.bin] || BIN_INFO.landfill;
+    const info = pointValues[it.bin] || pointValues.landfill;
     return { item_id: it.item_id, label: it.label, bin: it.bin, action: info.action, reasoning: it.tip || info.why };
   });
 
   const points_awarded = needs_disambiguation ? 0
-    : recommendations.reduce((a, r) => a + (BIN_INFO[r.bin]?.points || 0), 0);
+    : recommendations.reduce((a, r) => a + (pointValues[r.bin]?.points || 0), 0);
 
   const overall = items.length > 1
     ? 'Multiple items — sort each into its bin below.'
