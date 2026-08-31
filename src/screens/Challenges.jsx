@@ -23,16 +23,23 @@ function daysLeftInMonth() {
 export default function Challenges({ challenges, joined, user, gam, onJoin, onLeave }) {
   const [openId, setOpenId] = useState(null);
   const [liveRows, setLiveRows] = useState(null);
+  const [liveMembers, setLiveMembers] = useState(null);
   const named = challenges.map((c) => (c.type === 'school' ? { ...c, name: user?.org || 'Your school' } : c));
   const open = named.find((c) => c.id === openId);
 
-  // Pull the real board from Supabase when available; otherwise use seeded data.
+  // Pull the real board (and real member count) from Supabase when
+  // available; otherwise fall back to the seeded demo data.
   useEffect(() => {
     setLiveRows(null);
+    setLiveMembers(null);
     if (!openId) return;
     let cancelled = false;
     getLeaderboard(openId, user?.id, user?.org)
-      .then((r) => { if (!cancelled && r.live && r.rows.length) setLiveRows(r.rows); })
+      .then((r) => {
+        if (cancelled || !r.live) return;
+        if (r.rows.length) setLiveRows(r.rows);
+        if (typeof r.members === 'number') setLiveMembers(r.members);
+      })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [openId, user]);
@@ -55,6 +62,9 @@ export default function Challenges({ challenges, joined, user, gam, onJoin, onLe
     const rest = board.slice(3);
     const podOrder = [podium[1], podium[0], podium[2]].filter(Boolean);
     const medals = { 0: '🥇', 1: '🥈', 2: '🥉' };
+    // Real member count when we have one from Supabase; otherwise the
+    // seeded placeholder from data.js.
+    const memberCount = liveMembers != null ? liveMembers : open.members;
 
     return (
       <div className="body">
@@ -68,7 +78,7 @@ export default function Challenges({ challenges, joined, user, gam, onJoin, onLe
               <div className="small" style={{ opacity: 0.95 }}>{gap > 0 ? `${gap.toLocaleString()} pts to #${rank - 1}` : 'Top of the board! 🏆'}</div>
             </>
           ) : <div className="rank">Join to rank</div>}
-          <div className="tiny" style={{ opacity: 0.85, marginTop: 6 }}>{open.members.toLocaleString()} members · season ends in {daysLeftInMonth()} days</div>
+          <div className="tiny" style={{ opacity: 0.85, marginTop: 6 }}>{memberCount.toLocaleString()} members · season ends in {daysLeftInMonth()} days</div>
         </div>
 
         <div className="podium">
