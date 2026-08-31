@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getLeaderboard } from '../api.js';
+import { getLeaderboard, getChallengeMembers } from '../api.js';
 
 const AV_COLORS = ['#1f9d55', '#378add', '#ef9f27', '#e24b4a', '#7c5cdb', '#1d9e75', '#d4537e'];
 function colorFor(name) {
@@ -24,8 +24,25 @@ export default function Challenges({ challenges, joined, user, gam, onJoin, onLe
   const [openId, setOpenId] = useState(null);
   const [liveRows, setLiveRows] = useState(null);
   const [liveMembers, setLiveMembers] = useState(null);
+  const [liveMemberCounts, setLiveMemberCounts] = useState({});
   const named = challenges.map((c) => (c.type === 'school' ? { ...c, name: user?.org || 'Your school' } : c));
   const open = named.find((c) => c.id === openId);
+
+  // Real member counts for every card on the list screen, fetched once up
+  // front rather than only when a challenge is opened — replaces the seeded
+  // placeholder numbers in data.js (e.g. "312 students") as soon as it loads.
+  useEffect(() => {
+    let cancelled = false;
+    getChallengeMembers(user?.org).then((m) => { if (!cancelled) setLiveMemberCounts(m || {}); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [user?.org]);
+
+  // Real number for one card: live count when we have it, the seeded
+  // placeholder otherwise.
+  function memberCountFor(c) {
+    const live = liveMemberCounts[c.id];
+    return live != null ? live : c.members;
+  }
 
   // Pull the real board (and real member count) from Supabase when
   // available; otherwise fall back to the seeded demo data.
@@ -131,7 +148,7 @@ export default function Challenges({ challenges, joined, user, gam, onJoin, onLe
         <span className="chemoji">🎓</span>
         <div style={{ flex: 1 }}>
           <b className="small">{school.name}</b>
-          <div className="tiny muted">{school.members} students · season ends in {daysLeftInMonth()} days</div>
+          <div className="tiny muted">{memberCountFor(school).toLocaleString()} students · season ends in {daysLeftInMonth()} days</div>
         </div>
         {joined.includes('school') ? <span className="pill green">Joined</span> : <span className="pill gray">Join</span>}
       </button>
@@ -142,7 +159,7 @@ export default function Challenges({ challenges, joined, user, gam, onJoin, onLe
           <span className="chemoji">{c.emoji}</span>
           <div style={{ flex: 1 }}>
             <b className="small">{c.name}</b>
-            <div className="tiny muted">{c.members.toLocaleString()} members</div>
+            <div className="tiny muted">{memberCountFor(c).toLocaleString()} members</div>
           </div>
           {joined.includes(c.id) ? <span className="pill green">Joined</span> : <span className="pill gray">Join</span>}
         </button>
