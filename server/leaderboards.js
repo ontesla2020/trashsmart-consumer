@@ -67,18 +67,49 @@ export async function leaveChallenge(userId, cid) {
   if (error) console.error('[leaveChallenge] Supabase error:', error.message || error);
 }
 
-// Returns { live, rows:[{ name, pts, you }] }. live=false → client uses its seeded board.
+// Real member count for a challenge — replaces the hardcoded placeholder
+// numbers that used to live in data.js (e.g. "312 members"). For the school
+// challenge, this counts real profiles whose saved school matches the
+// current user's school. For community challenges, it counts rows in the
+// memberships table for that challenge id. Returns null (not 0) when we
+// can't compute a real number, so the caller knows to keep showing the
+// seeded fallback rather than a false "0 members".
+async function memberCount(cid, userSchool) {
+  if (!sb) return null;
+  if (cid === 'school') {
+    if (!userSchool) return null;
+    const { count, error } = await sb
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .ilike('school', userSchool);
+    if (error) { console.error('[memberCount:school] Supabase error:', error.message || error); return null; }
+    return count ?? null;
+  }
+  const { count, error } = await sb
+    .from('memberships')
+    .select('user_id', { count: 'exact', head: true })
+    .eq('challenge_id', cid);
+  if (error) { console.error('[memberCount:challenge] Supabase error:', error.message || error); return null; }
+  return count ?? null;
+}
+
+// Returns { live, rows:[{ name, pts, you }], members }. live=false → client
+// uses its seeded board (and its seeded member count) instead.
 export async function leaderboard(cid, userId, userSchool) {
-  if (!sb) return { live: false, rows: [] };
+  if (!sb) return { live: false, rows: [], members: null };
   const since = seasonStart();
+
   if (cid === 'school') {
     const { data, error } = await sb.rpc('school_leaderboard', { since });
     if (error) console.error('[leaderboard:school] Supabase error:', error.message || error);
     const rows = (data || []).map((r) => ({ name: r.school, pts: Number(r.per_capita) || 0, you: !!(userSchool && r.school === userSchool) }));
-    return { live: true, rows };
+    const members = await memberCount('school', userSchool);
+    return { live: true, rows, members };
   }
+
   const { data, error } = await sb.rpc('challenge_leaderboard', { cid, since });
   if (error) console.error('[leaderboard:challenge] Supabase error:', error.message || error);
   const rows = (data || []).map((r) => ({ name: r.name || 'Player', pts: Number(r.pts) || 0, you: !!(userId && r.user_id === userId) }));
-  return { live: true, rows };
+  const members = await memberCount(cid, userSchool);
+  return { live: true, rows, members };
 }
