@@ -19,7 +19,13 @@ export default function Rewards({ gam, rewards, nextReward, onRedeem }) {
       {rewards.map((r) => {
         const afford = gam.points >= r.cost;
         return (
-          <button key={r.id} className="reward" onClick={() => onRedeem(r)}>
+          <button
+            key={r.id}
+            className="reward"
+            onClick={() => onRedeem(r)}
+            disabled={!afford}
+            style={!afford ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+          >
             <div className={'rlogo ' + r.bg}>{r.emoji}</div>
             <div style={{ flex: 1 }}>
               <b className="small">{r.vendor}</b>
