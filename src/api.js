@@ -66,8 +66,23 @@ export async function getProfile(id) {
 // Spends points server-side and returns a one-time redemption code to show
 // at the register, or { ok:false, reason } if it can't (not enough points,
 // unknown reward, etc).
-export function redeemReward(userId, rewardId) {
-  return req('/api/rewards/redeem', json('POST', { user_id: userId, reward_id: rewardId }));
+//
+// NOTE: this deliberately does NOT use req() above. req() throws on any
+// non-2xx response and only looks at a `message` field — but the redeem
+// endpoint returns 400/503 on purpose *with* a useful `{ ok:false, reason }`
+// body (e.g. reason: 'insufficient_points'), and that body has no `message`
+// field. Routing through req() meant every failed redemption threw req()'s
+// generic "Something went wrong (400)" before App.jsx ever got to look at
+// `reason`, so the friendlier "You don't have enough points for that yet"
+// text could never actually show. Reading the body directly regardless of
+// status code restores that.
+export async function redeemReward(userId, rewardId) {
+  const res = await fetch(BASE + '/api/rewards/redeem', json('POST', { user_id: userId, reward_id: rewardId }));
+  try {
+    return await res.json();
+  } catch {
+    return { ok: false, reason: 'unavailable' };
+  }
 }
 
 export function joinChallengeApi(id, user_id) {
@@ -81,4 +96,13 @@ export function leaveChallengeApi(id, user_id) {
 export function getLeaderboard(id, user_id, school) {
   const q = new URLSearchParams({ user_id: user_id || '', school: school || '' });
   return req(`/api/challenges/${id}/leaderboard?${q}`);
+}
+
+// Real member counts for every challenge, fetched once for the Challenges
+// list screen instead of the seeded placeholder numbers in data.js.
+// Returns { [challengeId]: count|null }.
+export async function getChallengeMembers(school) {
+  const q = new URLSearchParams({ school: school || '' });
+  const r = await req(`/api/challenges/members?${q}`);
+  return r.members || {};
 }
