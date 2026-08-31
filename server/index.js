@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { detectItems } from './detect.js';
 import { binFor } from './scoring.js';
 import { effectiveMap, getRules } from './rules.js';
-import { upsertProfile, recordPoints, joinChallenge, leaveChallenge, leaderboard, getUserPoints, getProfile } from './leaderboards.js';
+import { upsertProfile, recordPoints, joinChallenge, leaveChallenge, leaderboard, getUserPoints, getProfile, allMemberCounts } from './leaderboards.js';
 import { createRedemption, lookupRedemption, confirmRedemption } from './redemptions.js';
 import { getRewards } from './rewards.js';
 import { getPointValues } from './points.js';
@@ -97,6 +97,16 @@ app.get('/api/challenges/:id/leaderboard', async (req, res) => {
   catch (e) {
     console.error('[GET /api/challenges/:id/leaderboard] error:', e?.message || e);
     res.json({ live: false, rows: [], members: null });
+  }
+});
+// Real member counts for every challenge at once — powers the Challenges
+// list screen so it shows live numbers instead of data.js's seeded ones
+// before you've opened any single challenge.
+app.get('/api/challenges/members', async (req, res) => {
+  try { res.json({ members: await allMemberCounts(req.query.school) }); }
+  catch (e) {
+    console.error('[GET /api/challenges/members] error:', e?.message || e);
+    res.json({ members: {} });
   }
 });
 
