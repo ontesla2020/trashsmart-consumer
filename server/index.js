@@ -94,7 +94,10 @@ app.post('/api/challenges/:id/join', async (req, res) => { try { await joinChall
 app.post('/api/challenges/:id/leave', async (req, res) => { try { await leaveChallenge(req.body?.user_id, req.params.id); } catch (e) { /* ignore */ } res.json({ ok: true }); });
 app.get('/api/challenges/:id/leaderboard', async (req, res) => {
   try { res.json(await leaderboard(req.params.id, req.query.user_id, req.query.school)); }
-  catch (e) { res.json({ live: false, rows: [] }); }
+  catch (e) {
+    console.error('[GET /api/challenges/:id/leaderboard] error:', e?.message || e);
+    res.json({ live: false, rows: [], members: null });
+  }
 });
 
 // ---- Reward redemption ----
