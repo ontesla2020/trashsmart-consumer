@@ -74,7 +74,7 @@ export async function leaveChallenge(userId, cid) {
 // memberships table for that challenge id. Returns null (not 0) when we
 // can't compute a real number, so the caller knows to keep showing the
 // seeded fallback rather than a false "0 members".
-async function memberCount(cid, userSchool) {
+export async function memberCount(cid, userSchool) {
   if (!sb) return null;
   if (cid === 'school') {
     if (!userSchool) return null;
@@ -91,6 +91,23 @@ async function memberCount(cid, userSchool) {
     .eq('challenge_id', cid);
   if (error) { console.error('[memberCount:challenge] Supabase error:', error.message || error); return null; }
   return count ?? null;
+}
+
+// The community challenge ids known to the app (mirrors src/data.js's
+// CHALLENGES list — kept here too since the members endpoint below needs to
+// know what to count before a challenge is ever opened).
+const COMMUNITY_CHALLENGE_IDS = ['livermore', 'dublin', 'pleasanton', 'oakland'];
+
+// Real member counts for every challenge at once — powers the Challenges
+// list screen, so it shows live numbers instead of data.js's seeded
+// placeholders (e.g. "312 students") before anything has even been opened.
+// Returns { school: n|null, livermore: n|null, dublin: n|null, ... }.
+export async function allMemberCounts(userSchool) {
+  const entries = await Promise.all([
+    memberCount('school', userSchool).then((n) => ['school', n]),
+    ...COMMUNITY_CHALLENGE_IDS.map((id) => memberCount(id, userSchool).then((n) => [id, n]))
+  ]);
+  return Object.fromEntries(entries);
 }
 
 // Returns { live, rows:[{ name, pts, you }], members }. live=false → client
