@@ -134,10 +134,18 @@ export default function Challenges({ challenges, joined, user, gam, onJoin, onLe
           </div>
         )}
 
-        {joined.includes(open.id)
-          ? <button className="btn sec" style={{ marginTop: 14 }} onClick={() => onLeave(open.id)}>Leave challenge</button>
-          : <button className="btn" style={{ marginTop: 14 }} onClick={() => onJoin(open.id)}>Join &amp; contribute</button>}
-        <div className="tiny muted" style={{ textAlign: 'center', marginTop: 8 }}>Every correct scan adds points to the challenges you've joined.</div>
+        {open.type === 'school' ? (
+          <div className="tiny muted" style={{ textAlign: 'center', marginTop: 14 }}>
+            You're automatically counted toward {open.name}'s total — it's based on the school saved in your profile, not a join button.
+          </div>
+        ) : (
+          <>
+            {joined.includes(open.id)
+              ? <button className="btn sec" style={{ marginTop: 14 }} onClick={() => onLeave(open.id)}>Leave challenge</button>
+              : <button className="btn" style={{ marginTop: 14 }} onClick={() => onJoin(open.id)}>Join &amp; contribute</button>}
+            <div className="tiny muted" style={{ textAlign: 'center', marginTop: 8 }}>Every correct scan adds points to the challenges you've joined.</div>
+          </>
+        )}
       </div>
     );
   }
@@ -157,7 +165,7 @@ export default function Challenges({ challenges, joined, user, gam, onJoin, onLe
           <b className="small">{school.name}</b>
           <div className="tiny muted">{memberCountFor(school).toLocaleString()} students · season ends in {daysLeftInMonth()} days</div>
         </div>
-        {joined.includes('school') ? <span className="pill green">Joined</span> : <span className="pill gray">Join</span>}
+        <span className="pill green">Your team</span>
       </button>
 
       <div className="sectitle">Community challenges</div>
