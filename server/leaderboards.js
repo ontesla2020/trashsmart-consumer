@@ -93,6 +93,18 @@ export async function memberCount(cid, userSchool) {
   return count ?? null;
 }
 
+// Real list of challenge ids this user has actually joined (from the
+// memberships table) — lets the client correct its local Join/Leave button
+// state to what the server actually recorded, instead of trusting whatever
+// this device's local storage happens to remember (which drifts across
+// devices/browsers, or if storage is ever cleared).
+export async function getJoinedChallenges(userId) {
+  if (!sb || !userId) return [];
+  const { data, error } = await sb.from('memberships').select('challenge_id').eq('user_id', userId);
+  if (error) { console.error('[getJoinedChallenges] Supabase error:', error.message || error); return []; }
+  return (data || []).map((r) => r.challenge_id);
+}
+
 // The community challenge ids known to the app (mirrors src/data.js's
 // CHALLENGES list — kept here too since the members endpoint below needs to
 // know what to count before a challenge is ever opened).
