@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { zipToCity, slugify } from '../geo.js';
 
-export default function CityPicker({ cities, current, onPick, onUseLocation, onBack }) {
+export default function CityPicker({ cities, current, onPick, onUseLocation }) {
   const [zip, setZip] = useState('');
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
@@ -26,8 +26,7 @@ export default function CityPicker({ cities, current, onPick, onUseLocation, onB
 
   return (
     <div className="body">
-      <button className="jbtn" style={{ padding: '5px 10px' }} onClick={onBack}>‹ Back</button>
-      <b style={{ fontSize: 17, display: 'block', margin: '12px 0 4px' }}>Your location</b>
+      <b style={{ fontSize: 17, display: 'block', margin: '0 0 4px' }}>Your location</b>
       <div className="small muted" style={{ marginBottom: 12 }}>We use this to load your city's sorting rules.</div>
 
       <button className="btn" onClick={onUseLocation}>📍 Use my current location</button>
