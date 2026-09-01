@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { detectItems } from './detect.js';
 import { binFor } from './scoring.js';
 import { effectiveMap, getRules } from './rules.js';
-import { upsertProfile, recordPoints, joinChallenge, leaveChallenge, leaderboard, getUserPoints, getProfile, allMemberCounts } from './leaderboards.js';
+import { upsertProfile, recordPoints, joinChallenge, leaveChallenge, leaderboard, getUserPoints, getProfile, allMemberCounts, getJoinedChallenges } from './leaderboards.js';
 import { createRedemption, lookupRedemption, confirmRedemption } from './redemptions.js';
 import { getRewards } from './rewards.js';
 import { getPointValues } from './points.js';
@@ -109,6 +109,17 @@ app.get('/api/challenges/members', async (req, res) => {
   catch (e) {
     console.error('[GET /api/challenges/members] error:', e?.message || e);
     res.json({ members: {} });
+  }
+});
+// Which challenges this user has actually joined, straight from the
+// memberships table — lets the client fix its Join/Leave button state if
+// local device storage ever drifts from what the server really has.
+app.get('/api/challenges/joined', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try { res.json({ joined: await getJoinedChallenges(req.query.user_id) }); }
+  catch (e) {
+    console.error('[GET /api/challenges/joined] error:', e?.message || e);
+    res.json({ joined: [] });
   }
 });
 
