@@ -157,7 +157,7 @@ input,textarea,select{-webkit-user-select:text;user-select:text}
 .lbhead{background:linear-gradient(135deg,#1f9d55,#0f6e3c);color:#fff;border:none;border-radius:16px;padding:16px;text-align:center}
 .lbhead .rank{font-size:30px;font-weight:800;margin:2px 0}
 .podium{display:flex;align-items:flex-end;justify-content:center;gap:9px;margin:14px 0}
-.pod{flex:1;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 6px 8px;text-align:center}
+.pod{flex:1;min-width:0;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 6px 8px;text-align:center}
 .pod1{padding-top:16px;border-color:#f0d9a0}
 .pod .medal{font-size:19px;line-height:1}
 .podav{display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;margin:4px auto 6px;font-size:16px;border-radius:50%}
