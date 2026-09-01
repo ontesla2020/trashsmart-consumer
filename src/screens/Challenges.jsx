@@ -20,13 +20,22 @@ function daysLeftInMonth() {
   return Math.max(1, Math.ceil((end - now) / 86400000));
 }
 
-export default function Challenges({ challenges, joined, user, gam, onJoin, onLeave }) {
+export default function Challenges({ challenges, joined, user, gam, onJoin, onLeave, onBackOverride }) {
   const [openId, setOpenId] = useState(null);
   const [liveRows, setLiveRows] = useState(null);
   const [liveMembers, setLiveMembers] = useState(null);
   const [liveMemberCounts, setLiveMemberCounts] = useState({});
   const named = challenges.map((c) => (c.type === 'school' ? { ...c, name: user?.org || 'Your school' } : c));
   const open = named.find((c) => c.id === openId);
+
+  // While a challenge detail is open, the app's shared appbar chevron closes
+  // it back to the list — same back gesture as everywhere else in the app,
+  // instead of this screen showing its own separate back button.
+  useEffect(() => {
+    if (!onBackOverride) return;
+    onBackOverride(openId ? () => setOpenId(null) : null);
+    return () => onBackOverride(null);
+  }, [openId, onBackOverride]);
 
   // Real member counts for every card on the list screen, fetched once up
   // front rather than only when a challenge is opened — replaces the seeded
@@ -85,9 +94,7 @@ export default function Challenges({ challenges, joined, user, gam, onJoin, onLe
 
     return (
       <div className="body">
-        <button className="jbtn" style={{ padding: '5px 10px' }} onClick={() => setOpenId(null)}>‹ Challenges</button>
-
-        <div className="lbhead" style={{ marginTop: 10 }}>
+        <div className="lbhead">
           <div className="small" style={{ opacity: 0.9 }}>{open.emoji} {open.name}</div>
           {rank ? (
             <>
