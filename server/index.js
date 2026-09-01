@@ -93,6 +93,7 @@ app.get('/api/profile/:id/points', async (req, res) => {
 app.post('/api/challenges/:id/join', async (req, res) => { try { await joinChallenge(req.body?.user_id, req.params.id); } catch (e) { /* ignore */ } res.json({ ok: true }); });
 app.post('/api/challenges/:id/leave', async (req, res) => { try { await leaveChallenge(req.body?.user_id, req.params.id); } catch (e) { /* ignore */ } res.json({ ok: true }); });
 app.get('/api/challenges/:id/leaderboard', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   try { res.json(await leaderboard(req.params.id, req.query.user_id, req.query.school)); }
   catch (e) {
     console.error('[GET /api/challenges/:id/leaderboard] error:', e?.message || e);
@@ -103,6 +104,7 @@ app.get('/api/challenges/:id/leaderboard', async (req, res) => {
 // list screen so it shows live numbers instead of data.js's seeded ones
 // before you've opened any single challenge.
 app.get('/api/challenges/members', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   try { res.json({ members: await allMemberCounts(req.query.school) }); }
   catch (e) {
     console.error('[GET /api/challenges/members] error:', e?.message || e);
