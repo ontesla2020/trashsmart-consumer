@@ -124,6 +124,15 @@ export default function App() {
     api.getRules().then((r) => { if (!cancelled) setCitiesMap(r.cities || {}); }).catch(() => {});
     api.getRewards().then((r) => { if (!cancelled && r.length) setRewards(r); }).catch(() => {});
     api.getPointsGuide().then((g) => { if (!cancelled && g.length) setPointsGuide(g); }).catch(() => {});
+    // Reconcile the Join/Leave button state with what the server actually
+    // has (memberships table) — local storage alone can drift, e.g. you
+    // joined a challenge on your phone but are now looking at the same
+    // account in a different browser/device that never saw that tap.
+    if (user.id) {
+      api.getJoinedChallenges(user.id).then((list) => {
+        if (!cancelled) setGam((g) => ({ ...g, joined: list }));
+      }).catch(() => {});
+    }
     if (!localStorage.getItem('ts_city')) {
       (async () => {
         const loc = await resolveLocation();
