@@ -82,6 +82,13 @@ export default function App() {
   // load, so shops/prices/point-values can change without an app update.
   const [rewards, setRewards] = useState(REWARDS);
   const [pointsGuide, setPointsGuide] = useState(POINTS_GUIDE);
+  // Lets a screen "borrow" the appbar's back chevron for its own internal
+  // back-navigation (e.g. Challenges closing a challenge detail back to the
+  // list) instead of rendering its own separate back button. null = no
+  // screen has claimed it, so the chevron falls back to the default
+  // screen-level back behavior below.
+  const [backOverride, setBackOverride] = useState(null);
+  function setBack(handler) { setBackOverride(() => handler); }
 
   useEffect(() => { try { localStorage.setItem('ts_gam2', JSON.stringify(gam)); } catch (e) { /* ignore */ } }, [gam]);
 
@@ -275,7 +282,17 @@ export default function App() {
 
   const showNav = TAB_SCREENS.includes(screen);
   const navActive = TAB_SCREENS.includes(screen) ? screen : null;
-  const showBack = ['capture', 'result', 'disambiguate', 'redeem'].includes(screen);
+  // A back chevron shows for any screen that's one level "deeper" than a
+  // tab root, OR when the current screen has claimed backOverride for its
+  // own internal navigation (e.g. a challenge detail open on the
+  // Challenges tab). Every back action in the app funnels through this one
+  // chevron so it looks and behaves the same everywhere, instead of some
+  // screens rendering their own separate back button.
+  const showBack = ['capture', 'result', 'disambiguate', 'redeem', 'citypicker'].includes(screen) || !!backOverride;
+  function handleBack() {
+    if (backOverride) { backOverride(); return; }
+    setScreen(screen === 'redeem' ? 'rewards' : 'home');
+  }
 
   if (!user && !onboarded) return <Onboarding onDone={finishOnboarding} />;
   if (!user) return <Login onComplete={completeLogin} />;
@@ -285,7 +302,7 @@ export default function App() {
       <div className="appbar">
         <div className="brand">
           {showBack
-            ? <button className="navi" style={{ flex: 'none', fontSize: 20, color: 'var(--ink)' }} onClick={() => setScreen(screen === 'redeem' ? 'rewards' : 'home')}>‹</button>
+            ? <button className="navi" style={{ flex: 'none', fontSize: 20, color: 'var(--ink)' }} onClick={handleBack}>‹</button>
             : <img className="logo" src="/logo-icon.svg" alt="" />}
           TrashSmart
         </div>
@@ -297,9 +314,9 @@ export default function App() {
       )}
 
       {screen === 'home' && <Home gam={gam} firstName={user.firstName} nextReward={nextReward} onScan={() => setScreen('capture')} onSetGoal={setGoal} cityName={city.name} cityRules={(citiesMap[city.id] && citiesMap[city.id].exceptions) || []} pointsGuide={pointsGuide} />}
-      {screen === 'challenges' && <Challenges challenges={CHALLENGES} joined={gam.joined || []} user={user} gam={gam} onJoin={joinChallenge} onLeave={leaveChallenge} />}
+      {screen === 'challenges' && <Challenges challenges={CHALLENGES} joined={gam.joined || []} user={user} gam={gam} onJoin={joinChallenge} onLeave={leaveChallenge} onBackOverride={setBack} />}
       {screen === 'profile' && <Profile user={user} gam={gam} onSignOut={signOut} onUpdateOrg={updateOrg} />}
-      {screen === 'citypicker' && <CityPicker cities={citiesMap} current={city.id} onPick={pickCity} onUseLocation={useMyLocation} onBack={() => setScreen('home')} />}
+      {screen === 'citypicker' && <CityPicker cities={citiesMap} current={city.id} onPick={pickCity} onUseLocation={useMyLocation} />}
       {screen === 'capture' && <Capture onCapture={handleScan} />}
       {screen === 'analyzing' && <Analyzing />}
       {screen === 'result' && active && <Result result={active} onDone={finishScan} />}
