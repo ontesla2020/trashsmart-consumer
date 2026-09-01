@@ -98,6 +98,16 @@ export function getLeaderboard(id, user_id, school) {
   return req(`/api/challenges/${id}/leaderboard?${q}`);
 }
 
+// Real, server-side list of the community challenges this user has joined
+// (from the memberships table) — the source of truth for the Join/Leave
+// button. Local device storage alone drifts: join on one device/browser and
+// the button on another still says "Join" even though you're already in.
+export async function getJoinedChallenges(userId) {
+  if (!userId) return [];
+  const r = await req(`/api/challenges/joined?${new URLSearchParams({ user_id: userId })}`);
+  return r.joined || [];
+}
+
 // Real member counts for every challenge, fetched once for the Challenges
 // list screen instead of the seeded placeholder numbers in data.js.
 // Returns { [challengeId]: count|null }.
