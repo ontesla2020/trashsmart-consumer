@@ -302,9 +302,17 @@ export default function App() {
       <div className="appbar">
         <div className="brand">
           {showBack
-            ? <button className="navi" style={{ flex: 'none', fontSize: 20, color: 'var(--ink)' }} onClick={handleBack}>‹</button>
-            : <img className="logo" src="/logo-icon.svg" alt="" />}
-          TrashSmart
+            ? (
+              <button className="navi" style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px 4px 0', background: 'none', border: 'none', font: 'inherit', fontWeight: 700, fontSize: 16, color: 'var(--ink)', cursor: 'pointer' }} onClick={handleBack}>
+                <span style={{ fontSize: 22, lineHeight: 1 }}>‹</span>Back
+              </button>
+            )
+            : (
+              <>
+                <img className="logo" src="/logo-icon.svg" alt="" />
+                TrashSmart
+              </>
+            )}
         </div>
         <button className="loc locbtn" onClick={() => setScreen('citypicker')}>📍 {city.name}{city.known === false ? ' · general' : ''} ▾</button>
       </div>
