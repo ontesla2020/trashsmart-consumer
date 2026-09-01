@@ -119,7 +119,10 @@ export async function leaderboard(cid, userId, userSchool) {
   if (cid === 'school') {
     const { data, error } = await sb.rpc('school_leaderboard', { since });
     if (error) console.error('[leaderboard:school] Supabase error:', error.message || error);
-    const rows = (data || []).map((r) => ({ name: r.school, pts: Number(r.per_capita) || 0, you: !!(userSchool && r.school === userSchool) }));
+    // pts is each school's real combined total, not the per-student average
+    // (school_leaderboard still computes per_capita too, just no longer
+    // what ranks schools or what the app displays).
+    const rows = (data || []).map((r) => ({ name: r.school, pts: Number(r.total) || 0, you: !!(userSchool && r.school === userSchool) }));
     const members = await memberCount('school', userSchool);
     return { live: true, rows, members };
   }
